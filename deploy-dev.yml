@@ -1,44 +1,40 @@
 - hosts: dev
   gather_facts: false
   become: true
-
   vars:
     app_dir: /opt/app
     repo_url: https://github.com/Krynclv/aws-exo5.git
     branch: main
-
   tasks:
-    - name: Install deps (python3, git, node, npm, nginx, curl)
-      raw: apk update && apk add --no-cache python3 git nodejs npm nginx curl
-
-    - name: Gather facts now that python is present
-      setup:
-
-    - name: Ensure app dir exists
-      file:
+    - raw: apk update && apk add --no-cache python3 git nodejs npm nginx curl
+    - setup:
+    - file:
         path: "{{ app_dir }}"
         state: directory
         mode: "0755"
-
-    - name: Clone repo
-      git:
+    - git:
         repo: "{{ repo_url }}"
         dest: "{{ app_dir }}"
         version: "{{ branch }}"
         force: yes
-
-    - name: Build if Node project
-      shell: |
+    - shell: |
         cd "{{ app_dir }}"
         if [ -f package.json ]; then
           npm ci || npm install
           npm run build || true
         fi
       args: { executable: /bin/sh }
-
-    - name: Create confirmation page
-      copy:
-        dest: /var/www/html/index.html
+    - file:
+        path: /usr/share/nginx/html
+        state: directory
+        mode: "0755"
+    - file:
+        src: /usr/share/nginx/html
+        dest: /var/www/html
+        state: link
+        force: true
+    - copy:
+        dest: /usr/share/nginx/html/index.html
         mode: "0644"
         content: |
           <!doctype html>
@@ -47,15 +43,11 @@
           <p>Host: {{ inventory_hostname }}</p>
           <p>Date: {{ ansible_date_time.iso8601 }}</p>
           </html>
-
-    - name: Create deploy log
-      lineinfile:
+    - lineinfile:
         path: /var/log/deploy.log
         create: true
         line: "{{ ansible_date_time.iso8601 }} - DEV deploy OK on {{ inventory_hostname }}"
-
-    - name: Start nginx if not running
-      shell: |
+    - shell: |
         nginx -t
-        pgrep nginx >/dev/null || nginx
+        pgrep nginx >/dev/null && nginx -s reload || nginx
       args: { executable: /bin/sh }
