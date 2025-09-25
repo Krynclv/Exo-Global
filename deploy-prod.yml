@@ -5,10 +5,14 @@
   vars:
     app_dir: /opt/app
     repo_url: https://github.com/Krynclv/aws-exo5.git
+    branch: main
 
   tasks:
-    - name: Install deps (python3 for Ansible modules, git, node, nginx, curl)
+    - name: Install deps (python3, git, node, npm, nginx, curl)
       raw: apk update && apk add --no-cache python3 git nodejs npm nginx curl
+
+    - name: Gather facts now that python is present
+      setup:
 
     - name: Ensure app dir exists
       file:
@@ -20,7 +24,7 @@
       git:
         repo: "{{ repo_url }}"
         dest: "{{ app_dir }}"
-        version: main        
+        version: "{{ branch }}"
         force: yes
 
     - name: Build if Node project
@@ -30,8 +34,7 @@
           npm ci || npm install
           npm run build || true
         fi
-      args:
-        executable: /bin/sh
+      args: { executable: /bin/sh }
 
     - name: Create confirmation page
       copy:
@@ -42,16 +45,17 @@
           <html lang="fr"><meta charset="utf-8"><title>Prod OK</title>
           <h1>Déploiement PROD réussi</h1>
           <p>Host: {{ inventory_hostname }}</p>
-          <p>Date: {{ ansible_date_time.date }} {{ ansible_date_time.time }}</p>
+          <p>Date: {{ ansible_date_time.iso8601 }}</p>
           </html>
 
     - name: Create deploy log
-      shell: |
-        echo "$(date) - PROD deploy OK on {{ inventory_hostname }}" >> /var/log/deploy.log
-      args: {executable: /bin/sh}
+      lineinfile:
+        path: /var/log/deploy.log
+        create: true
+        line: "{{ ansible_date_time.iso8601 }} - PROD deploy OK on {{ inventory_hostname }}"
 
     - name: Start nginx if not running
       shell: |
         nginx -t
         pgrep nginx >/dev/null || nginx
-      args: {executable: /bin/sh}
+      args: { executable: /bin/sh }
