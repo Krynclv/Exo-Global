@@ -20,5 +20,30 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; else pip install pytest; fi
       - name: Run tests
         env:
-            PYTHONPATH: ${{ github.workspace }}
+          PYTHONPATH: ${{ github.workspace }}
         run: pytest -q
+
+  deploy:
+    needs: tests
+    if: success() && github.event_name == 'push'
+    runs-on: self-hosted
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure Ansible present
+        run: |
+          if ! command -v ansible >/dev/null; then
+            sudo apt-get update -y
+            sudo apt-get install -y ansible sshpass
+          fi
+          ansible --version
+
+      - name: Show inventory
+        run: ansible-inventory -i inventory.ini --list
+      - name: Deploy to DEV
+        if: startsWith(github.ref, 'refs/heads/dev') || startsWith(github.ref, 'refs/heads/feature/')
+        run: ansible-playbook -i inventory.ini deploy-dev.yml
+
+      - name: Deploy to PROD
+        if: github.ref == 'refs/heads/main'
+        run: ansible-playbook -i inventory.ini deploy-prod.yml
