@@ -1,0 +1,58 @@
+- hosts: dev
+  gather_facts: false
+  become: true
+
+  vars:
+    app_dir: /opt/app
+    repo_url: https://github.com/Krynclv/aws-exo5.git
+
+  tasks:
+    - name: Install deps (python3 for Ansible modules, git, node, nginx, curl)
+      raw: apk update && apk add --no-cache python3 git nodejs npm nginx curl
+
+    - name: Ensure app dir exists
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Clone repo
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ app_dir }}"
+        version: feature       
+        force: yes
+
+    - name: Build if Node project
+      shell: |
+        cd "{{ app_dir }}"
+        if [ -f package.json ]; then
+          npm ci || npm install
+          npm run build || true
+        fi
+      args:
+        executable: /bin/sh
+
+    - name: Create confirmation page
+      copy:
+        dest: /var/www/html/index.html
+        mode: "0644"
+        content: |
+          <!doctype html>
+          <html lang="fr"><meta charset="utf-8"><title>Dev OK</title>
+          <h1>Déploiement DEV réussi</h1>
+          <p>Host: {{ inventory_hostname }}</p>
+          <p>Date: {{ ansible_date_time.date }} {{ ansible_date_time.time }}</p>
+          </html>
+
+    - name: Create deploy log
+      shell: |
+        echo "$(date) - DEV deploy OK on {{ inventory_hostname }}" >> /var/log/deploy.log
+      args: {executable: /bin/sh}
+
+    - name: Start nginx if not running
+      shell: |
+        nginx -t
+        pgrep nginx >/dev/null || nginx
+      args: {executable: /bin/sh}
+
