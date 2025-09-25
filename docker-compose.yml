@@ -1,0 +1,32 @@
+services:
+  serveur-dev:
+    image: lscr.io/linuxserver/openssh-server:latest
+    container_name: serveur-dev
+    hostname: serveur-dev
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Paris
+      - SUDO_ACCESS=true
+      - PASSWORD_ACCESS=true
+      - USER_NAME=ansible
+      - USER_PASSWORD=ansible
+    ports:
+      - "2222:2222"
+    restart: unless-stopped
+
+  serveur-prod:
+    image: lscr.io/linuxserver/openssh-server:latest
+    container_name: serveur-prod
+    hostname: serveur-prod
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Paris
+      - SUDO_ACCESS=true
+      - PASSWORD_ACCESS=true
+      - USER_NAME=ansible
+      - USER_PASSWORD=ansible
+    ports:
+      - "2200:2222"
+    restart: unless-stopped
