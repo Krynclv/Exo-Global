@@ -30,6 +30,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - name: Ensure Ansible present
         run: |
           if ! command -v ansible >/dev/null; then
@@ -40,9 +41,26 @@ jobs:
 
       - name: Show inventory
         run: ansible-inventory -i inventory.ini --list
+
+      - name: Configure SSH key (DEV)
+        if: startsWith(github.ref, 'refs/heads/dev') || startsWith(github.ref, 'refs/heads/feature/')
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEV_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p 2222 192.168.1.155 >> ~/.ssh/known_hosts
+
       - name: Deploy to DEV
         if: startsWith(github.ref, 'refs/heads/dev') || startsWith(github.ref, 'refs/heads/feature/')
         run: ansible-playbook -i inventory.ini deploy-dev.yml
+
+      - name: Configure SSH key (PROD)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p 2200 192.168.1.155 >> ~/.ssh/known_hosts
 
       - name: Deploy to PROD
         if: github.ref == 'refs/heads/main'

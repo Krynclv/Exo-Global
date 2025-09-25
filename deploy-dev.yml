@@ -51,3 +51,4 @@
         nginx -t
         pgrep nginx >/dev/null && nginx -s reload || nginx
       args: { executable: /bin/sh }
+      
