@@ -4,7 +4,7 @@
   vars:
     app_dir: /opt/app
     repo_url: https://github.com/Krynclv/aws-exo5.git
-    branch: feature
+    branch: dev
   tasks:
     - raw: apk update && apk add --no-cache python3 git nodejs npm nginx curl
     - setup:
