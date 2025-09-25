@@ -52,7 +52,11 @@ jobs:
 
       - name: Deploy to DEV
         if: startsWith(github.ref, 'refs/heads/dev') || startsWith(github.ref, 'refs/heads/feature/')
-        run: ansible-playbook -i inventory.ini deploy-dev.yml
+        run: |
+          ansible-playbook -i inventory.ini deploy-dev.yml \
+            -e "ansible_become=true" \
+            -e "ansible_become_method=sudo" \
+            -e "ansible_become_password=${{ secrets.DEV_SUDO_PASS }}"
 
       - name: Configure SSH key (PROD)
         if: github.ref == 'refs/heads/main'
@@ -64,4 +68,8 @@ jobs:
 
       - name: Deploy to PROD
         if: github.ref == 'refs/heads/main'
-        run: ansible-playbook -i inventory.ini deploy-prod.yml
+        run: |
+          ansible-playbook -i inventory.ini deploy-prod.yml \
+            -e "ansible_become=true" \
+            -e "ansible_become_method=sudo" \
+            -e "ansible_become_password=${{ secrets.PROD_SUDO_PASS }}"
